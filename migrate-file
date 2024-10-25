@@ -1,0 +1,141 @@
+rsync -avz -e "ssh -i ~/mykeys/destination-key.pem" ubuntu@<source_vm_ip>:/home/ubuntu/myfiles/ ubuntu@<destination_vm_ip>:/home/ubuntu/backup/
+
+
+You can use either private IPs or public IPs (Elastic IPs) depending on your network setup and security requirements. Here's when to use each:
+
+We use public ip
+
+
+Dummy1-dashboard public ip. 15
+Dashboard public ip 1
+
+Working fine
+
+rsync -avz -e "ssh -i /home/ubuntu/destination-key.pem" /home/ubuntu/wordpress1.log ubuntu@public-ip9:/home/ubuntu/backup/
+
+Ssh-keygen
+
+rsync -avz -e "ssh -i /home/ubuntu/destination-key.pem" --exclude '/home/ubuntu/.ssh/authorized_keys' /home/ubuntu/ ubuntu@15.207.60.99:/home/ubuntu/
+
+Now I changed vm rsync -avz -e "ssh -i /home/ubuntu/destination-key.pem" /home/ubuntu/mount ubuntu@15.206.76.191:/home/ubuntu/
+
+
+
+sending incremental file list
+rsync: opendir "/home/ubuntu/mount/backup/home/ubuntu/mount/maria/db/mysql" failed: Permission denied (13)
+rsync: opendir "/home/ubuntu/mount/backup/home/ubuntu/mount/maria/db/performance_schema" failed: Permission denied (13)
+rsync: opendir "/home/ubuntu/mount/backup/home/ubuntu/mount/maria/db/wordpress" failed: Permission denied (13)
+rsync: opendir "/home/ubuntu/mount/maria/db.bkp.17.nov.22/db/mysql" failed: Permission denied (13)
+rsync: opendir "/home/ubuntu/mount/maria/db.bkp.17.nov.22/db/performance_schema" failed: Permission denied (13)
+rsync: opendir "/home/ubuntu/mount/maria/db.bkp.17.nov.22/db/wordpress" failed: Permission denied (13)
+rsync: opendir "/home/ubuntu/mount/maria/db/mysql" failed: Permission denied (13)
+rsync: opendir "/home/ubuntu/mount/maria/db/performance_schema" failed: Permission denied (13)
+rsync: opendir "/home/ubuntu/mount/maria/db/wordpress" failed: Permission denied (13)
+
+
+
+
+
+rsync: send_files failed to open "/home/ubuntu/mount/wordpress/wp-content/wflogs/attack-data.php": Permission denied (13)
+rsync: send_files failed to open "/home/ubuntu/mount/wordpress/wp-content/wflogs/config-livewaf.php": Permission denied (13)
+rsync: send_files failed to open "/home/ubuntu/mount/wordpress/wp-content/wflogs/config-synced.php": Permission denied (13)
+rsync: send_files failed to open "/home/ubuntu/mount/wordpress/wp-content/wflogs/config-transient.php": Permission denied (13)
+rsync: send_files failed to open "/home/ubuntu/mount/wordpress/wp-content/wflogs/config.php": Permission denied (13)
+rsync: send_files failed to open "/home/ubuntu/mount/wordpress/wp-content/wflogs/ips.php": Permission denied (13)
+mount/wordpress/wp-content/wflogs/rules.php
+rsync: send_files failed to open "/home/ubuntu/mount/wordpress/wp-content/wflogs/template.php": Permission denied (13)
+
+sent 6,578,065,354 bytes  received 2,274,212 bytes  12,814,682.70 bytes/sec
+total size is 10,041,469,913  speedup is 1.53
+rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1205) [sender=3.1.3]
+
+
+
+Then I used sudo 
+ sudo rsync -avz -e "ssh -i /home/ubuntu/destination-key.pem" /home/ubuntu/mount ubuntu@public-ip1:/home/ubuntu/
+
+
+Data transfer complete 
+Now docker images mkdir docker-images-backup
+ docker save -o docker-images-backup/close-webview.tar chatteron/close-webview.ui:latest
+
+rsync -avz -e "ssh -i /home/ubuntu/destination-key.pem" /home/ubuntu/docker-images-backup/close-webview.tar ubuntu@15.21:/home/ubuntu/
+
+
+docker load -i /home/ubuntu/docker-images-backup/close-webview.tar
+
+
+Docker images  I got it
+
+
+Create scripts  Step 1: Save Script (save_images.sh)
+Create a script to save images:
+bash
+Copy code
+#!/bin/bash
+
+# Directory to store exported images
+EXPORT_DIR="docker-images-backup"
+mkdir -p "$EXPORT_DIR"
+
+# Array of image names to save
+IMAGES=(
+  "chatteron/unified-webviews.ui:latest"
+  "chatteron/webviews:latest"
+  "chatteron/unified.ui:latest"
+  "chatteron/analytics-unified:latest"
+  "chatteron/flow:latest"
+  "chatteron/webviews-v3:latest"
+  "chatteron/unified.ui:2.8.2"
+  "chatteron/unified-webpack.ui:latest"
+  # Add more images as needed
+)
+
+# Loop through images and save each as a .tar file
+for IMAGE in "${IMAGES[@]}"; do
+  # Replace '/' and ':' with '-' to create a valid filename
+  IMAGE_FILE="${IMAGE//[:\/]/-}.tar"
+  echo "Saving $IMAGE as $EXPORT_DIR/$IMAGE_FILE"
+  docker save -o "$EXPORT_DIR/$IMAGE_FILE" "$IMAGE"
+done
+
+echo "All images have been saved to $EXPORT_DIR."
+Make the script executable:
+bash
+Copy code
+chmod +x save_images.sh
+
+
+
+
+And transfer now 
+rsync -avz -e "ssh -i /home/ubuntu/destination-key.pem" /home/ubuntu/docker-images-backup ubuntu@15.206.76.191:/home/ubuntu/
+ 
+And for load
+
+Step 2: Load Script (load_images.sh)
+Create a script to load all .tar files in a directory on the destination VM:
+bash
+Copy code
+#!/bin/bash
+
+# Directory containing exported images
+IMPORT_DIR="docker-images-backup"
+
+# Check if the directory exists
+if [ ! -d "$IMPORT_DIR" ]; then
+  echo "Directory $IMPORT_DIR does not exist."
+  exit 1
+fi
+
+# Loop through .tar files in the directory and load each
+for IMAGE_FILE in "$IMPORT_DIR"/*.tar; do
+  echo "Loading $IMAGE_FILE..."
+  docker load -i "$IMAGE_FILE"
+done
+
+echo "All images have been loaded from $IMPORT_DIR."
+Make this script executable as well:
+bash
+Copy code
+chmod +x load_images.sh
